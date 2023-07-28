@@ -50,14 +50,24 @@ class RMSNorm:
     return (x * (x.pow(2).mean(-1, keepdim=True) + self.eps).rsqrt()) * self.weight
 
 class Attention:
-  def __init__(self, dim, n_heads, linear=Linear):
-    self.wq, self.wk, self.wv, self.wo = [linear(dim, dim, bias=False) for _ in range(4)]
+  def __init__(self, dim, n_heads, linear=Linear, n_kv_heads=None):
     self.n_heads = n_heads
     self.head_dim = dim // n_heads
+    self.n_kv_heads = n_heads if n_kv_heads is None else n_kv_heads 
+
+    model_parallel_size = 1
+    self.n_local_heads = n_heads // model_parallel_size
+    self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
+    self.n_rep = self.n_local_heads // self.n_local_kv_heads  
+
+    self.wq, self.wo = [linear(dim, dim, bias=False) for _ in range(2)]
+    self.wk, self.wv = [linear(dim, self.head_dim * self.n_kv_heads, bias=False) for _ in range(2)]
 
   def prepare_attention(self, x:Tensor, freqs_cis:Tensor) -> Tuple[Tensor, Tensor, Tensor]:
     xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
-    xq, xk, xv = [x.reshape(x.shape[0], x.shape[1], self.n_heads, self.head_dim) for x in (xq, xk, xv)]
+    xq = xq.reshape(xq.shape[0], xq.shape[1], self.n_local_heads, self.head_dim) 
+    xk, xv = [x.reshape(x.shape[0], x.shape[1], self.n_local_kv_heads, self.head_dim) for x in (xk, xv)]
+
     xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
     return xq, xk, xv
 
@@ -106,8 +116,8 @@ class FeedForward:
     return self.w2(self.w1(x).silu() * self.w3(x))
 
 class TransformerBlock:
-  def __init__(self, dim, multiple_of, n_heads, norm_eps, linear=Linear, ffn_dim_multiplier=None):
-    self.attention = Attention(dim, n_heads, linear)
+  def __init__(self, dim, multiple_of, n_heads, norm_eps, linear=Linear, ffn_dim_multiplier=None, n_kv_heads=None):
+    self.attention = Attention(dim, n_heads, linear, n_kv_heads=n_kv_heads)
     self.feed_forward = FeedForward(dim, 4*dim, multiple_of, linear, ffn_dim_multiplier)
     self.attention_norm = RMSNorm(dim, norm_eps)
     self.ffn_norm = RMSNorm(dim, norm_eps)
@@ -132,8 +142,8 @@ class TransformerBlock:
     return self._post(x, output)
 
 class Transformer:
-  def __init__(self, dim, multiple_of, n_heads, n_layers, norm_eps, vocab_size, linear=Linear, max_batch_size=32, max_seq_len=1024, ffn_dim_multiplier=None):
-    self.layers = [TransformerBlock(dim, multiple_of, n_heads, norm_eps, linear, ffn_dim_multiplier) for _ in range(n_layers)]
+  def __init__(self, dim, multiple_of, n_heads, n_layers, norm_eps, vocab_size, linear=Linear, max_batch_size=32, max_seq_len=1024, ffn_dim_multiplier=None, n_kv_heads=None):
+    self.layers = [TransformerBlock(dim, multiple_of, n_heads, norm_eps, linear, ffn_dim_multiplier, n_kv_heads=n_kv_heads) for _ in range(n_layers)]
     self.norm = RMSNorm(dim, norm_eps)
     self.tok_embeddings = Embedding(vocab_size, dim)
     self.output = linear(dim, vocab_size, bias=False)
@@ -180,11 +190,11 @@ MODEL_PARAMS = {
       "args": {"dim": 5120, "multiple_of": 256, "n_heads": 40, "n_layers": 40, "norm_eps": 1e-05, "vocab_size": VOCAB_SIZE},
       "files": 2,
     },
-#     # 70B is disabled because we do not yet implement n_kv_heads argument
-#     "70B": {
-#       "args": {"dim": 8192, "multiple_of": 4096, "ffn_dim_multiplier": 1.3, "n_heads": 64, "n_kv_heads": 8, "n_layers": 80, "norm_eps": 1e-05, "vocab_size": VOCAB_SIZE},
-#       "files": 8,
-#     },
+     # 70B is disabled because we do not yet implement n_kv_heads argument
+     "70B": {
+       "args": {"dim": 8192, "multiple_of": 4096, "ffn_dim_multiplier": 1.3, "n_heads": 64, "n_kv_heads": 8, "n_layers": 80, "norm_eps": 1e-05, "vocab_size": VOCAB_SIZE},
+       "files": 8,
+     },
   },
 }
 
