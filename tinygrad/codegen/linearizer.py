@@ -139,7 +139,7 @@ class Linearizer:
   supports_float4_alu: bool = False
 
   def __init__(self, ast:LazyOp, output_buffer:LazyBuffer):
-    # NOTE: if there's a RESHAPE, we skip it. the output shape is set from the reduce op or a latebuf
+    # NOTE: if there's a RESHAPE, we skip it. The output shape is set from the reduce op or a latebuf
     self.ast = ast.src[0] if ast.op == MovementOps.RESHAPE else ast
 
     # get the output buffers

@@ -427,6 +427,8 @@ After you are done speaking, output [EOS]. You are not Chad.
     new_toks = [llama.tokenizer.bos_id()] + llama.tokenizer.encode(outputted)
     assert toks == new_toks[:len(toks)]
     toks = new_toks
+
+    # slow
     assert outputted == llama.tokenizer.decode(toks)
 
     last_break = len(outputted)
