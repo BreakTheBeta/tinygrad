@@ -110,9 +110,9 @@ def concat_weights(models):
   def convert(name) -> Tensor:
     disk_tensors = [model[name] for model in models]
     if len(disk_tensors) == 1 or len(disk_tensors[0].shape) == 1:
-      return disk_tensors[0].to(device=Device.DEFAULT)
+      return disk_tensors[0].bitcast(dtypes.uint16).to(device=Device.DEFAULT) 
     axis = 1 if name.startswith("tok_embeddings.") or name.endswith(".attention.wo.weight") or name.endswith(".feed_forward.w2.weight") else 0
-    lazy_tensors = [data.to(device=Device.DEFAULT) for data in disk_tensors]
+    lazy_tensors = [data.bitcast(dtypes.uint16).to(device=Device.DEFAULT) if data.dtype == dtypes.bfloat16 else data.to(device=Device.DEFAULT) for data in disk_tensors]
     return lazy_tensors[0].cat(*lazy_tensors[1:], dim=axis)
   return {name: convert(name) for name in {name: None for model in models for name in model}}
 
@@ -166,7 +166,14 @@ class LLaMa:
       weights = convert_from_huggingface(weights, model, params["args"]["n_heads"], params["args"].get("n_kv_heads", params["args"]["n_heads"]))
 
     # fix bf16, TODO: check if device supports bf16
-    weights = {k:v.to(Device.DEFAULT).cast(dtypes.float16) if v.dtype == dtypes.bfloat16 else v for k,v in weights.items()}
+    print("Casting to float16")
+
+    weights = {k:v.cast(dtypes.float16) if v.dtype == dtypes.bfloat16 else v for k,v in weights.items()}
+
+    weights = {k:v.cast(dtypes.float16) if v.dtype == dtypes.bfloat16 else v for k,v in weights.items()}
+    # for k,v in weights.items():
+    #   print(v.device)
+    # print("Casting to float16")
 
     if quantize:
       weights = AbsmaxQuantizedLinear.quantize(weights)

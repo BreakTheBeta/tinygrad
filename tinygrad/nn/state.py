@@ -70,6 +70,7 @@ def load_state_dict(model, state_dict, strict=True, verbose=True):
 # torch support!
 
 def torch_load(fn:str) -> Dict[str, Tensor]:
+  print("Torch loading")
   t = Tensor.empty(os.stat(fn).st_size, dtype=dtypes.uint8, device=f"disk:{fn}")
 
   offsets: Dict[Union[str, int], int] = {}
@@ -79,6 +80,7 @@ def torch_load(fn:str) -> Dict[str, Tensor]:
     lens[storage[2]] = storage[4] * storage[1].itemsize
     if storage[2] not in offsets: return None
     byte_offset = offsets[storage[2]]+storage_offset*storage[1].itemsize
+    print(storage[1])
     ret = t[byte_offset:byte_offset+prod(size)].cast(storage[1])
 
     # 7 lines to deal with permuted tensors. NOTE: this currently requires reading off the disk

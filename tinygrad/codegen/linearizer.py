@@ -17,7 +17,7 @@ class UOps(Enum):
   LOOP = auto(); IF = auto(); END = auto(); SPECIAL = auto() # loops can be global, local, or other # noqa: E702
   DEFINE_GLOBAL = auto(); DEFINE_LOCAL = auto(); DEFINE_ACC = auto() # this defines buffers # noqa: E702
   LOAD = auto(); STORE = auto(); CONST = auto(); BARRIER = auto(); PHI = auto() # noqa: E702
-  ALU = auto(); WMMA = auto(); CAST = auto(); GEP = auto() # noqa: E702
+  ALU = auto(); WMMA = auto(); CAST = auto(); GEP = auto() # This defines operations ALU most binary ops noqa: E702
 
 @dataclass(eq=False)
 class UOp:
