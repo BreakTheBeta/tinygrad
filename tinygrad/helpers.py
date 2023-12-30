@@ -160,12 +160,12 @@ class dtypes:
   uint64: Final[DType] = DType(8, 8, "unsigned long", np.uint64)
   float16: Final[DType] = DType(9, 2, "half", np.float16)
   # bfloat16 has higher priority than float16, so least_upper_dtype(dtypes.int64, dtypes.uint64) = dtypes.float16
-  bfloat16: Final[DType] = DType(10, 2, "__bf16", None)
+  bfloat16: Final[DType] = DType(10, 2, "bfloat", None)
   float32: Final[DType] = DType(11, 4, "float", np.float32)
   float64: Final[DType] = DType(12, 8, "double", np.float64)
 
   # dtype aliases
-  half = float16; float = float32; double = float64 # noqa: E702
+  half = float16; float = float32; double = float64; bfloat = bfloat16 # noqa: E702
   uchar = uint8; ushort = uint16; uint = uint32; ulong = uint64 # noqa: E702
   char = int8; short = int16; int = int32; long = int64 # noqa: E702
 

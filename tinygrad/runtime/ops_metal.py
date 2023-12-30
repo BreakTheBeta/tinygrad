@@ -15,6 +15,7 @@ def compile_metal(prg, use_xcode=bool(getenv("METAL_XCODE"))) -> bytes:
     air = subprocess.check_output(['xcrun', '-sdk', 'macosx', 'metal', '-x', 'metal', '-c', '-', '-o', '-'], input=prg.encode('utf-8'))
     return subprocess.check_output(['xcrun', '-sdk', 'macosx', 'metallib', '-', '-o', '-'], input=air)
   options = Metal.MTLCompileOptions.new()
+  options.setLanguageVersion_(Metal.MTLLanguageVersion3_1)
   library = unwrap2(MetalDevice.compiler_device.newLibraryWithSource_options_error_(prg, options, None))
   return library.libraryDataContents().bytes().tobytes()
 
